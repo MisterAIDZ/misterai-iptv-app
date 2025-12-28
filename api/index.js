@@ -2,41 +2,32 @@ const axios = require('axios');
 
 module.exports = async (req, res) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
-    const { mac } = req.query;
-    // جربنا هذا المسار الأكثر شيوعاً بدلاً من portal.php
-    const PORTAL_URL = 'http://testdi.proxytx.cloud/server/load.php'; 
-
-    if (!mac) return res.status(400).json({ error: 'MAC missing' });
+    
+    // بيانات Xtream الجديدة التي أرسلتها
+    const XTREAM_URL = 'http://2.00322.xyz:8000/player_api.php';
+    const username = 'Michelle';
+    const password = 'QHJXZQG3AF';
 
     try {
-        const config = {
-            headers: {
-                'User-Agent': 'Mozilla/5.0 (QtEmbedded; U; Linux; C) AppleWebKit/533.3 (KHTML, like Gecko) Mag200 sb2 embedded Safari/533.3',
-                'Cookie': `mac=${encodeURIComponent(mac)}; stb_lang=en; timezone=GMT`,
-                'X-User-Agent': 'Model: MAG250; SW: 2.18-r14-pub-250',
-                'Referer': 'http://testdi.proxytx.cloud/c/'
-            },
-            timeout: 8000 // مهلة 8 ثوانٍ
-        };
-
-        // طلب التوكن
-        const handshake = await axios.get(`${PORTAL_URL}?type=stb&action=handshake`, config);
-        const token = handshake.data.js ? handshake.data.js.token : null;
-
-        if (!token) {
-            return res.status(200).json({ 
-                error: "السيرفر لم يعطِ توكن. الماك قد يكون منتهياً أو محظوراً.",
-                debug: handshake.data 
-            });
-        }
-
-        // جلب القنوات
-        const response = await axios.get(`${PORTAL_URL}?type=itv&action=get_all_channels`, {
-            headers: { ...config.headers, 'Authorization': `Bearer ${token}` }
+        // جلب قائمة القنوات مباشرة عبر API الـ Xtream
+        const response = await axios.get(XTREAM_URL, {
+            params: {
+                username: username,
+                password: password,
+                action: 'get_live_streams' // جلب قنوات البث المباشر
+            }
         });
 
-        res.status(200).json(response.data.js.data);
+        // إرسال أول 100 قناة فقط لتسريع التحميل في البداية
+        const channels = response.data.slice(0, 100).map(ch => ({
+            name: ch.name,
+            url: `http://2.00322.xyz:8000/live/${username}/${password}/${ch.stream_id}.ts`,
+            id: ch.stream_id,
+            icon: ch.stream_icon
+        }));
+
+        res.status(200).json(channels);
     } catch (error) {
-        res.status(500).json({ error: "فشل الاتصال بالسيرفر", message: error.message });
+        res.status(500).json({ error: "فشل الاتصال بسيرفر Xtream", details: error.message });
     }
 };
