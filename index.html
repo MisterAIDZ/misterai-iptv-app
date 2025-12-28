@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>MisterAI IPTV Player</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-slate-900 text-white p-5">
+    <h1 class="text-center text-2xl font-bold mb-8">لوحة تحكم MisterAI 📺</h1>
+    
+    <div class="max-w-md mx-auto mb-10">
+        <select id="macInput" class="w-full p-3 bg-slate-800 rounded border border-slate-700 mb-4">
+            <option value="00:1A:79:31:6F:77">MAC 1 (Aug 2025)</option>
+            <option value="00:1A:79:E2:2B:9F">MAC 2 (Jun 2026)</option>
+        </select>
+        <button onclick="loadChannels()" class="w-full bg-blue-600 p-3 rounded font-bold">تحديث القنوات</button>
+    </div>
+
+    <div id="channels" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4"></div>
+
+    <script>
+        async function loadChannels() {
+            const mac = document.getElementById('macInput').value;
+            const container = document.getElementById('channels');
+            container.innerHTML = "جاري التحميل...";
+
+            try {
+                // نطلب من الـ API الذي أنشأناه (سيعمل محلياً وعلى Vercel)
+                const response = await fetch(`/api?mac=${mac}`);
+                const data = await response.json();
+                
+                container.innerHTML = "";
+                data.forEach(ch => {
+                    const card = document.createElement('div');
+                    card.className = "p-4 bg-slate-800 rounded shadow hover:bg-slate-700 cursor-pointer border-r-4 border-blue-500";
+                    card.innerHTML = `<h3 class="font-bold">${ch.name}</h3>`;
+                    container.appendChild(card);
+                });
+            } catch (e) {
+                container.innerHTML = "حدث خطأ أثناء جلب البيانات.";
+            }
+        }
+    </script>
+</body>
+</html>
