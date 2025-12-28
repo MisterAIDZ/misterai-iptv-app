@@ -4,40 +4,67 @@
     <meta charset="UTF-8">
     <title>MisterAI IPTV Player</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
 </head>
 <body class="bg-slate-900 text-white p-5">
-    <h1 class="text-center text-2xl font-bold mb-8">لوحة تحكم MisterAI 📺</h1>
+    <h1 class="text-center text-2xl font-bold mb-5">شاشة MisterAI 📺</h1>
+
+    <div class="max-w-3xl mx-auto mb-8 bg-black rounded-lg overflow-hidden shadow-2xl border border-slate-700">
+        <video id="video" controls class="w-full aspect-video"></video>
+        <div id="channelName" class="p-2 bg-slate-800 text-sm text-blue-400">لم يتم اختيار قناة</div>
+    </div>
     
-    <div class="max-w-md mx-auto mb-10">
-        <select id="macInput" class="w-full p-3 bg-slate-800 rounded border border-slate-700 mb-4">
-            <option value="00:1A:79:31:6F:77">MAC 1 (Aug 2025)</option>
-            <option value="00:1A:79:E2:2B:9F">MAC 2 (Jun 2026)</option>
+    <div class="max-w-md mx-auto mb-10 flex gap-2">
+        <select id="macInput" class="flex-1 p-3 bg-slate-800 rounded border border-slate-700">
+            <option value="00:1A:79:E2:2B:9F">MAC (ينتهي في 2026) ✅</option>
+            <option value="00:1A:79:31:14:18">MAC (ينتهي في 2026) ✅</option>
+            <option value="00:1A:79:31:6F:77">MAC (قديم)</option>
         </select>
-        <button onclick="loadChannels()" class="w-full bg-blue-600 p-3 rounded font-bold">تحديث القنوات</button>
+        <button onclick="loadChannels()" class="bg-blue-600 px-6 rounded font-bold hover:bg-blue-500">تحديث</button>
     </div>
 
-    <div id="channels" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4"></div>
+    <div id="channels" class="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-5xl mx-auto"></div>
 
     <script>
+        function playStream(url, name) {
+            const video = document.getElementById('video');
+            document.getElementById('channelName').innerText = "جاري تشغيل: " + name;
+            
+            if (Hls.isSupported()) {
+                const hls = new Hls();
+                hls.loadSource(url);
+                hls.attachMedia(video);
+                hls.on(Hls.Events.MANIFEST_PARSED, () => video.play());
+            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                video.src = url;
+                video.play();
+            }
+        }
+
         async function loadChannels() {
             const mac = document.getElementById('macInput').value;
             const container = document.getElementById('channels');
-            container.innerHTML = "جاري التحميل...";
+            container.innerHTML = "جاري جلب البيانات...";
 
             try {
-                // نطلب من الـ API الذي أنشأناه (سيعمل محلياً وعلى Vercel)
                 const response = await fetch(`/api?mac=${mac}`);
                 const data = await response.json();
                 
+                if (data.error) {
+                    container.innerHTML = `<div class="col-span-full text-red-500 text-center">${data.error}</div>`;
+                    return;
+                }
+
                 container.innerHTML = "";
                 data.forEach(ch => {
                     const card = document.createElement('div');
-                    card.className = "p-4 bg-slate-800 rounded shadow hover:bg-slate-700 cursor-pointer border-r-4 border-blue-500";
-                    card.innerHTML = `<h3 class="font-bold">${ch.name}</h3>`;
+                    card.className = "p-3 bg-slate-800 rounded cursor-pointer hover:bg-blue-900 border border-slate-700 transition";
+                    card.innerHTML = `<div class="text-xs text-gray-400 mb-1">#${ch.number}</div><div class="font-bold truncate">${ch.name}</div>`;
+                    card.onclick = () => playStream(ch.url, ch.name);
                     container.appendChild(card);
                 });
             } catch (e) {
-                container.innerHTML = "حدث خطأ أثناء جلب البيانات.";
+                container.innerHTML = "خطأ في الشبكة.";
             }
         }
     </script>
